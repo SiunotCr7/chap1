@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IQ Challenge Premium - Siuuu</title>
+    <style>
+        :root {
+            --glass-heavy: rgba(255, 255, 255, 0.95);
+            --accent: #6c5ce7;
+            --correct: #26de81;
+            --wrong: #ff7675;
+            --text-dark: #2d3436;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%; animation: gradientBG 15s ease infinite;
+            font-family: 'Segoe UI', system-ui, sans-serif; padding: 15px;
+        }
+
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+        .quiz-container {
+            width: 100%; max-width: 600px; background: var(--glass-heavy); backdrop-filter: blur(15px);
+            border-radius: 30px; padding: 30px; box-shadow: 0 25px 45px rgba(0,0,0,0.2);
+        }
+
+        .stats-row { display: flex; justify-content: space-between; font-weight: 800; color: var(--accent); margin-bottom: 10px; font-size: 0.9rem; }
+        
+        .progress-container { width: 100%; height: 8px; background: rgba(0,0,0,0.05); border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+        #progress-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.4s ease; }
+
+        .image-viewport { width: 100%; background: #fff; border-radius: 20px; margin-bottom: 20px; display: flex; justify-content: center; align-items: center; min-height: 180px; border: 1px solid rgba(0,0,0,0.05); }
+        .image-viewport img { max-width: 100%; max-height: 300px; object-fit: contain; padding: 10px; }
+
+        #question-text { font-size: 1.15rem; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; text-align: center; line-height: 1.4; }
+
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .btn-opt { background: #fff; border: 2px solid transparent; padding: 15px 10px; border-radius: 15px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .btn-opt:hover { transform: translateY(-2px); border-color: var(--accent); }
+        .btn-opt.correct { background: var(--correct) !important; color: #fff; }
+        .btn-opt.wrong { background: var(--wrong) !important; color: #fff; }
+
+        .hidden { display: none !important; }
+        .result-screen { text-align: center; }
+        .score-circle { width: 120px; height: 120px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 20px auto; font-size: 2rem; font-weight: 900; }
+        
+        @media (max-width: 480px) { .options-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="quiz-container">
+    <div id="quiz-ui">
+        <div class="stats-row"><span id="q-label">Câu 1/50</span><span id="live-score">Đúng: 0</span></div>
+        <div class="progress-container"><div id="progress-fill"></div></div>
+        <div class="image-viewport" id="img-box"><img id="q-img" src="" alt="IQ"></div>
+        <div id="question-text">Đang tải...</div>
+        <div class="options-grid" id="options-box"></div>
+    </div>
+
+    <div id="result-ui" class="result-screen hidden">
+        <h2>KẾT QUẢ</h2>
+        <div class="score-circle"><span id="final-score">0/50</span></div>
+        <p id="feedback" style="font-weight:600; color:#636e72"></p>
+        <button class="btn-opt" style="width:100%; background:var(--accent); color:#fff" onclick="location.reload()">LÀM LẠI</button>
+    </div>
+</div>
+
+<script>
+    // Đã fix: Đổi tất cả .png thành .jpg để khớp với file ảnh của bạn
+    const rawData = [
+        ["Tìm hình tương ứng thay vào dấu hỏi?", "cau1.jpg", ["Hình a", "Hình b", "Hình c", "Hình d"], 0],
+        ["Có bao nhiêu hình tròn trong hình?", "cau2.jpg", ["10", "12", "13", "14"], 3],
+        ["Số nào chia hết cho 3?", null, ["9741", "9772", "9863", "9169"], 0],
+        ["Số nào chia hết cho 9?", null, ["2019", "2341", "3386", "5103"], 3],
+        ["Để đánh 20 trang trong 10 phút cần bao nhiêu người?", null, ["10 người", "20 người", "12 người", "5 người"], 0],
+        ["Số tất ít nhất để chắc chắn có 1 đôi cùng màu?", null, ["3 chiếc", "4 chiếc", "25 chiếc", "13 chiếc"], 0],
+        ["Tuấn cao hơn Nam, Bình thấp hơn Tuấn. Câu nào đúng nhất?", null, ["Bình cao bằng Nam", "Bình thấp hơn Nam", "Bình cao hơn Nam", "Không xác định được"], 3],
+        ["Thuê xe tháng (80$) tiết kiệm bao nhiêu so với ngày (120$) trong 4 tháng?", null, ["160 USD", "140 USD", "40 USD", "120 USD"], 0],
+        ["Hình tiếp theo là hình nào?", "cau9.jpg", ["Hình A", "Hình B", "Hình C", "Hình D"], 0],
+        ["Kết quả: 7 x 9 - 3 x 4 + 10 = ?", null, ["61", "62", "63", "64"], 0],
+        ["Có bao nhiêu đường thẳng trong hình?", "cau11.jpg", ["14", "12", "16", "18"], 0],
+        ["Tìm số còn thiếu ở dấu chấm hỏi (?)", "cau12.jpg", ["1", "2", "3", "4"], 3],
+        ["Tìm phần còn thiếu cho hình tròn?", "cau13.jpg", ["A", "B", "C", "D"], 0],
+        ["Dãy số: 61, 54, 62, __, 63, 56, 64. Số còn thiếu?", null, ["55", "54", "56", "57"], 0],
+        ["Quả bóng nào không cùng nhóm với các quả còn lại?", "cau15.jpg", ["15", "17", "19", "13"], 0],
+        ["Chọn hình phù hợp tại vị trí dấu (?)", "cau16.jpg", ["A", "B", "C", "D"], 3],
+        ["Quy luật biến đổi hình khối?", "cau17.jpg", ["a", "b", "c", "d"], 2],
+        ["Tìm số điền vào dấu (?) cho phương trình bài 18", null, ["2", "4", "6", "8"], 1],
+        ["Tìm hình thích hợp cho dấu chấm hỏi (?)", "cau19.jpg", ["A", "B", "C", "D"], 2],
+        ["Theo quy luật thì hình tiếp theo sẽ là hình nào?", "cau20.jpg", ["Hình a", "Hình b", "Hình b", "Hình d"], 1],
+        ["Dài và rộng tăng 40%, diện tích khu vườn tăng bao nhiêu %?", null, ["40%", "96%", "80%", "100%"], 1],
+        ["Bán kính hình tròn tăng 20%, diện tích tăng bao nhiêu %?", null, ["20%", "40%", "44%", "50%"], 2],
+        ["5 mèo ăn 30 chuột trong 1.5h. 10 mèo ăn 60 chuột trong?", null, ["1.5 giờ", "3 giờ", "6 giờ", "9 giờ"], 0],
+        ["Hình nào tiếp theo phù hợp với quy luật?", "cau24.jpg", ["A", "B", "C", "D"], 0],
+        ["8 thỏ đào 8 hang trong 8 ngày. 4 thỏ đào 4 hang trong?", null, ["2 ngày", "4 ngày", "8 ngày", "1 ngày"], 2],
+        ["Cọp 10p, Sói 15p, Cáo 20p ăn hết dê. Cùng ăn hết trong?", null, ["~4.6 phút", "6 phút", "8 phút", "10 phút"], 0],
+        ["A gấp 3 lần B, 4 năm trước A gấp 4 lần B. Tuổi A hiện nay?", null, ["24", "30", "36", "48"], 2],
+        ["Làm đúng 20 câu đạt 80%. Bài test có bao nhiêu câu?", null, ["22", "25", "30", "35"], 1],
+        ["Hình còn thiếu là hình nào?", "cau29.jpg", ["A", "B", "C", "D"], 0],
+        ["Có bao nhiêu số chẵn có 2 chữ số?", null, ["45", "50", "90", "100"], 0],
+        ["Số tiếp theo dãy: 1, 8, 27, 64...?", null, ["125", "100", "216", "144"], 0],
+        ["Xe đạp 12km/h, máy 28km/h cách nhau 1h. Sau bao lâu đuổi kịp?", null, ["0.5h", "0.75h", "1h", "1.25h"], 1],
+        ["Cá heo bơi 600m/phút. 3600m hết bao nhiêu phút?", null, ["3 phút", "5 phút", "6 phút", "10 phút"], 2],
+        ["Ô tô 60km/h, máy 40km/h đi ngược chiều cách 200km. Gặp nhau sau?", null, ["2 giờ", "3 giờ", "4 giờ", "5 giờ"], 0],
+        ["Chọn hình phù hợp logic?", "cau35.jpg", ["A", "B", "C", "D"], 3],
+        ["A đi 4km Bắc, rồi 3km Đông. Khoảng cách về điểm xuất phát?", null, ["7km", "1km", "5km", "10km"], 2],
+        ["Chọn hình phù hợp logic?", "cau37.jpg", ["A", "B", "C", "D"], 3],
+        ["Chọn hình phù hợp logic?", "cau38.jpg", ["A", "B", "C", "D"], 3],
+        ["Bán kính tăng 10%, diện tích tăng bao nhiêu %?", null, ["10%", "21%", "11%", "20%"], 1],
+        ["Chọn hình phù hợp?", "cau40.jpg", ["A", "B", "C", "D"], 2],
+        ["Số 2586321 -> 2682. Vậy 94783219647 -> ?", null, ["46284", "48264", "98147", "73196"], 0],
+        ["40% nam & 20% nữ học toán. Nữ chiếm 55%. Tổng % học toán?", null, ["29%", "19%", "39%", "45%"], 0],
+        ["Cho dãy hình sau, chọn hình tiếp theo?", "cau43.jpg", ["A", "B", "C", "D"], 0],
+        ["Chọn hình phù hợp logic?", "cau44.jpg", ["A", "B", "C", "D"], 1],
+        ["360 CN, 1/3 ghi điện. Sa thải 1/3 số đó. Tỷ lệ mới?", null, ["25.0%", "25.2%", "22.0%", "20.0%"], 0],
+        ["Chọn hình phù hợp?", "cau46.jpg", ["A", "B", "C", "D"], 1],
+        ["Chọn hình phù hợp?", "cau47.jpg", ["A", "B", "C", "D"], 0],
+        ["Tìm số còn thiếu ở dấu chấm hỏi (?)", "cau48.jpg", ["2", "3", "5", "4"], 3],
+        ["Vị trí nét gạch hình tiếp theo?", "cau49.jpg", ["1, 4", "2, 6", "3, 5", "4, 8"], 2],
+        ["Hình nào thêm dấu chấm đáp ứng điều kiện?", "cau50.jpg", ["Hình A", "Hình B", "Hình D", "Hình C"], 2]
+    ];
+
+    const quizData = rawData.map(i => ({ q: i[0], img: i[1], opts: i[2], ans: i[3] }));
+    let current = 0, score = 0, isLocked = false;
+
+    function render() {
+        if (current >= quizData.length) return showResult();
+        isLocked = false;
+        const d = quizData[current];
+        document.getElementById('q-label').innerText = `Câu ${current + 1}/${quizData.length}`;
+        document.getElementById('question-text').innerText = d.q;
+        document.getElementById('progress-fill').style.width = `${(current / quizData.length) * 100}%`;
+        
+        const imgBox = document.getElementById('img-box'), img = document.getElementById('q-img');
+        if (d.img) { 
+            imgBox.classList.remove('hidden'); 
+            // Fix: Tự động loại bỏ khoảng trắng trong tên file nếu có (ví dụ 'cau 1.jpg' thành 'cau1.jpg')
+            const cleanImgName = d.img.replace(/\s/g, '');
+            img.src = "images/" + cleanImgName; 
+        } 
+        else { 
+            imgBox.classList.add('hidden'); 
+        }
+
+        const box = document.getElementById('options-box'); 
+        box.innerHTML = '';
+        d.opts.forEach((txt, i) => {
+            const btn = document.createElement('button'); 
+            btn.className = 'btn-opt';
+            btn.innerText = txt; 
+            btn.onclick = () => check(i, btn); 
+            box.appendChild(btn);
+        });
+    }
+
+    function check(idx, btn) {
+        if (isLocked) return; 
+        isLocked = true;
+        const correct = quizData[current].ans;
+        if (idx === correct) { 
+            score++; 
+            btn.classList.add('correct'); 
+        } 
+        else { 
+            btn.classList.add('wrong'); 
+            document.querySelectorAll('.btn-opt')[correct].classList.add('correct'); 
+        }
+        document.getElementById('live-score').innerText = `Đúng: ${score}`;
+        current++; 
+        setTimeout(render, 1200);
+    }
+
+    function showResult() {
+        document.getElementById('quiz-ui').classList.add('hidden');
+        document.getElementById('result-ui').classList.remove('hidden');
+        document.getElementById('final-score').innerText = `${score}/${quizData.length}`;
+        const p = (score / quizData.length) * 100;
+        document.getElementById('feedback').innerText = p >= 80 ? "Thiên tài!" : (p >= 50 ? "Khá lắm!" : "Cố gắng lên!");
+    }
+    render();
+</script>
+</body>
+</html>
